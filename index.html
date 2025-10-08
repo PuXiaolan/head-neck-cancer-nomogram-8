@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>头颈癌放疗患者预后风险预测模型</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --primary-color: #3498db;
+            --risk-low: #27ae60;
+            --risk-medium: #f39c12;
+            --risk-high: #e74c3c;
+            --text-dark: #2c3e50;
+            --text-light: #7f8c8d;
+            --bg-light: #ecf0f1;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: var(--text-dark);
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            backdrop-filter: blur(10px);
+        }
+        
+        h1 {
+            color: var(--text-dark);
+            margin-bottom: 10px;
+            font-size: 2.5em;
+            font-weight: 700;
+        }
+        
+        .subtitle {
+            color: var(--text-light);
+            font-size: 1.2em;
+            font-weight: 300;
+            margin-top: 0;
+        }
+        
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+        
+        @media (max-width: 968px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .input-panel {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+        }
+        
+        .input-group {
+            margin-bottom: 25px;
+        }
+        
+        .input-group label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: 600;
+            color: var(--text-dark);
+            font-size: 1.1em;
+        }
+        
+        select {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            background: white;
+            appearance: none;
+            background-image: url("data:image/svg+xml;charset=US-ASCII,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 5'><path fill='%23666' d='M2 0L0 2h4zm0 5L0 3h4z'/></svg>");
+            background-repeat: no-repeat;
+            background-position: right 15px center;
+            background-size: 12px;
+        }
+        
+        select:focus {
+            border-color: var(--primary-color);
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+        }
+        
+        .calculate-btn {
+            width: 100%;
+            padding: 18px;
+            background: linear-gradient(135deg, var(--primary-color), #2980b9);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 10px;
+        }
+        
+        .calculate-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(52, 152, 219, 0.4);
+        }
+        
+        .results-panel {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+            min-height: 600px;
+        }
+        
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        
+        @media (max-width: 968px) {
+            .metrics-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .metrics-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .metric-card {
+            text-align: center;
+            padding: 20px 10px;
+            border-radius: 12px;
+            background: white;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+            transition: transform 0.3s ease;
+        }
+        
+        .metric-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .metric-label {
+            font-size: 0.9em;
+            color: var(--text-light);
+            margin-bottom: 10px;
+            font-weight: 500;
+        }
+        
+        .metric-value {
+            font-size: 1.8em;
+            font-weight: 700;
+            margin: 10px 0;
+        }
+        
+        .metric-unit {
+            font-size: 0.9em;
+            color: var(--text-light);
+        }
+        
+        .charts-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+        
+        @media (max-width: 768px) {
+            .charts-container {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .chart-wrapper {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+        }
+        
+        .chart-title {
+            text-align: center;
+            margin-bottom: 15px;
+            font-weight: 600;
+            color: var(--text-dark);
+        }
+        
+        .risk-indicator {
+            height: 25px;
+            background: linear-gradient(90deg, var(--risk-low), var(--risk-medium), var(--risk-high));
+            border-radius: 12px;
+            margin: 25px 0;
+            position: relative;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+        }
+        
+        .risk-marker {
+            position: absolute;
+            top: -7px;
+            width: 40px;
+            height: 40px;
+            background: white;
+            border: 4px solid var(--text-dark);
+            border-radius: 50%;
+            transform: translateX(-50%);
+            transition: left 0.5s ease;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        
+        .risk-labels {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 10px;
+            font-weight: 600;
+        }
+        
+        .recommendation {
+            padding: 25px;
+            border-radius: 12px;
+            margin-top: 20px;
+            background: white;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+        }
+        
+        .recommendation h3 {
+            margin-bottom: 15px;
+            color: var(--text-dark);
+        }
+        
+        .recommendation ul {
+            list-style-type: none;
+            padding-left: 0;
+        }
+        
+        .recommendation li {
+            padding: 8px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        
+        .recommendation li:last-child {
+            border-bottom: none;
+        }
+        
+        .low-risk { border-left: 6px solid var(--risk-low); }
+        .medium-risk { border-left: 6px solid var(--risk-medium); }
+        .high-risk { border-left: 6px solid var(--risk-high); }
+        
+        footer {
+            text-align: center;
+            margin-top: 40px;
+            padding: 25px;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+        }
+        
+        .model-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        
+        .info-item {
+            text-align: center;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        
+        .placeholder {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-light);
+        }
+        
+        .placeholder-icon {
+            font-size: 3em;
+            margin-bottom: 20px;
+        }
+        
+        .clinical-recommendations {
+            margin-top: 30px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>头颈癌放疗患者预后风险预测模型</h1>
+            <p class="subtitle">基于SEER数据库的列线图网页预测工具</p>
+        </header>
+        
+        <div class="main-content">
+            <div class="input-panel">
+                <h2>📋 患者特征</h2>
+                
+                <div class="input-group">
+                    <label for="ageGroup">年龄分组</label>
+                    <select id="ageGroup">
+                        <option value="0">&lt;60岁</option>
+                        <option value="100">≥60岁</option>
+                    </select>
+                </div>
+                
+                <div class="input-group">
+                    <label for="gender">性别</label>
+                    <select id="gender">
+                        <option value="0">女性</option>
+                        <option value="20">男性</option>
+                    </select>
+                </div>
+                
+                <div class="input-group">
+                    <label for="metastasis">远处转移</label>
+                    <select id="metastasis">
+                        <option value="0">无 (M0)</option>
+                        <option value="120">有 (M1)</option>
+                    </select>
+                </div>
+                
+                <div class="input-group">
+                    <label for="stage">肿瘤分期</label>
+                    <select id="stage">
+                        <option value="0">早期 (I-II)</option>
+                        <option value="30">晚期 (III-IV)</option>
+                    </select>
+                </div>
+                
+                <button class="calculate-btn" onclick="calculatePrognosis()">
+                    🚀 计算预后
+                </button>
+                
+                <div style="margin-top: 25px; padding: 15px; background: #f8f9fa; border-radius: 8px;">
+                    <h4>评分系统:</h4>
+                    <ul style="list-style-type: none; padding-left: 0; font-size: 0.9em;">
+                        <li>• 年龄≥60岁: 100分</li>
+                        <li>• 男性: 20分</li>
+                        <li>• 远处转移 (M1): 120分</li>
+                        <li>• 晚期分期 (III-IV): 30分</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="results-panel">
+                <h2>📊 预测结果</h2>
+                
+                <div id="results" style="display: none;">
+                    <div class="metrics-grid">
+                        <div class="metric-card">
+                            <div class="metric-label">风险评分</div>
+                            <div class="metric-value" id="scoreDisplay">0</div>
+                            <div class="metric-unit">分</div>
+                        </div>
+                        
+                        <div class="metric-card">
+                            <div class="metric-label">1年生存率</div>
+                            <div class="metric-value" id="oneYearDisplay">0%</div>
+                            <div class="metric-unit">概率</div>
+                        </div>
+                        
+                        <div class="metric-card">
+                            <div class="metric-label">3年生存率</div>
+                            <div class="metric-value" id="threeYearDisplay">0%</div>
+                            <div class="metric-unit">概率</div>
+                        </div>
+                        
+                        <div class="metric-card">
+                            <div class="metric-label">5年生存率</div>
+                            <div class="metric-value" id="fiveYearDisplay">0%</div>
+                            <div class="metric-unit">概率</div>
+                        </div>
+                        
+                        <div class="metric-card">
+                            <div class="metric-label">风险等级</div>
+                            <div class="metric-value" id="riskLevelDisplay">-</div>
+                            <div class="metric-unit">分层</div>
+                        </div>
+                    </div>
+                    
+                    <div class="risk-indicator">
+                        <div class="risk-marker" id="riskMarker"></div>
+                    </div>
+                    
+                    <div class="risk-labels">
+                        <span style="color: var(--risk-low);">低风险 (0-50)</span>
+                        <span style="color: var(--risk-medium);">中风险 (51-120)</span>
+                        <span style="color: var(--risk-high);">高风险 (121-270)</span>
+                    </div>
+                    
+                    <div class="charts-container">
+                        <div class="chart-wrapper">
+                            <div class="chart-title">各因素评分贡献</div>
+                            <canvas id="factorsChart" height="250"></canvas>
+                        </div>
+                        
+                        <div class="chart-wrapper">
+                            <div class="chart-title">预测生存曲线</div>
+                            <canvas id="survivalChart" height="250"></canvas>
+                        </div>
+                    </div>
+                    
+                    <div id="clinical-recommendations" class="clinical-recommendations">
+                        <!-- 临床建议将动态生成 -->
+                    </div>
+                </div>
+                
+                <div id="placeholder" class="placeholder">
+                    <div class="placeholder-icon">👆</div>
+                    <h3>输入患者特征并点击"计算预后"</h3>
+                    <p>此工具将基于预后列线图预测生存概率</p>
+                </div>
+            </div>
+        </div>
+        
+        <footer>
+            <h3>📋 模型信息</h3>
+            <div class="model-info">
+                <div class="info-item">
+                    <strong>数据来源</strong>
+                    <p>SEER数据库中14,417例头颈癌患者</p>
+                </div>
+                <div class="info-item">
+                    <strong>模型性能</strong>
+                    <p>Cox比例风险模型<br>C指数: 0.596</p>
+                </div>
+                <div class="info-item">
+                    <strong>验证</strong>
+                    <p>内部验证显示良好的校准度</p>
+                </div>
+                <div class="info-item">
+                    <strong>目标人群</strong>
+                    <p>接受放疗的头颈癌患者</p>
+                </div>
+            </div>
+            <p style="margin-top: 20px; color: var(--text-light);">
+                © 2024 头颈癌预后研究项目
+            </p>
+        </footer>
+    </div>
+
+    <script>
+        // 初始化图表
+        let factorsChart, survivalChart;
+        
+        function initCharts() {
+            const factorsCtx = document.getElementById('factorsChart').getContext('2d');
+            const survivalCtx = document.getElementById('survivalChart').getContext('2d');
+            
+            // 各因素贡献图表
+            factorsChart = new Chart(factorsCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['年龄≥60', '男性', '转移M1', '晚期分期'],
+                    datasets: [{
+                        label: '评分',
+                        data: [0, 0, 0, 0],
+                        backgroundColor: ['#e74c3c', '#3498db', '#e74c3c', '#e74c3c'],
+                        borderColor: ['#c0392b', '#2980b9', '#c0392b', '#c0392b'],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `评分: ${context.parsed.y} 分`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 120,
+                            title: {
+                                display: true,
+                                text: '评分'
+                            }
+                        }
+                    }
+                }
+            });
+            
+            // 生存曲线图表
+            survivalChart = new Chart(survivalCtx, {
+                type: 'line',
+                data: {
+                    labels: ['1年', '2年', '3年', '4年', '5年'],
+                    datasets: [{
+                        label: '生存概率',
+                        data: [100, 100, 100, 100, 100],
+                        borderColor: '#3498db',
+                        backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                        tension: 0.4,
+                        fill: true,
+                        pointBackgroundColor: '#3498db',
+                        pointBorderColor: '#ffffff',
+                        pointBorderWidth: 2,
+                        pointRadius: 5
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `生存率: ${context.parsed.y}%`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            min: 0,
+                            max: 100,
+                            title: {
+                                display: true,
+                                text: '生存概率 (%)'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        function calculatePrognosis() {
+            // 获取输入值
+            const ageScore = parseInt(document.getElementById('ageGroup').value);
+            const genderScore = parseInt(document.getElementById('gender').value);
+            const metastasisScore = parseInt(document.getElementById('metastasis').value);
+            const stageScore = parseInt(document.getElementById('stage').value);
+            
+            // 计算总评分
+            const totalScore = ageScore + genderScore + metastasisScore + stageScore;
+            
+            // 风险分层
+            let riskLevel, riskColor, survivalData, recommendation;
+            if (totalScore <= 50) {
+                riskLevel = "低风险";
+                riskColor = "#27ae60";
+                survivalData = [95, 90, 85, 80, 75];
+                recommendation = `
+                    <h3>临床建议 - 低风险</h3>
+                    <ul>
+                        <li><strong>推荐标准治疗方案</strong></li>
+                        <li><strong>常规随访</strong> (6-12个月)</li>
+                        <li><strong>预期预后良好</strong></li>
+                        <li><strong>约65%</strong> 5年生存率</li>
+                        <li>考虑较低强度的监测</li>
+                    </ul>
+                `;
+            } else if (totalScore <= 120) {
+                riskLevel = "中风险";
+                riskColor = "#f39c12";
+                survivalData = [85, 75, 65, 55, 45];
+                recommendation = `
+                    <h3>临床建议 - 中风险</h3>
+                    <ul>
+                        <li><strong>考虑辅助治疗强化</strong></li>
+                        <li><strong>密切监测</strong> (3-6个月间隔)</li>
+                        <li><strong>个体化治疗调整</strong></li>
+                        <li><strong>约45%</strong> 5年生存率</li>
+                        <li>定期影像学和实验室随访</li>
+                    </ul>
+                `;
+            } else {
+                riskLevel = "高风险";
+                riskColor = "#e74c3c";
+                survivalData = [70, 55, 40, 30, 20];
+                recommendation = `
+                    <h3>临床建议 - 高风险</h3>
+                    <ul>
+                        <li><strong>推荐强化治疗方案</strong></li>
+                        <li><strong>频繁监测</strong> (1-3个月间隔)</li>
+                        <li><strong>考虑参与临床试验</strong></li>
+                        <li><strong>积极的支持性护理</strong></li>
+                        <li><strong>约20%</strong> 5年生存率</li>
+                        <li>多学科团队管理至关重要</li>
+                    </ul>
+                `;
+            }
+            
+            // 提取1年、3年、5年生存率
+            const oneYearSurvival = survivalData[0];
+            const threeYearSurvival = survivalData[2];
+            const fiveYearSurvival = survivalData[4];
+            
+            // 更新显示
+            document.getElementById('scoreDisplay').textContent = totalScore;
+            document.getElementById('scoreDisplay').style.color = riskColor;
+            document.getElementById('oneYearDisplay').textContent = oneYearSurvival + '%';
+            document.getElementById('threeYearDisplay').textContent = threeYearSurvival + '%';
+            document.getElementById('fiveYearDisplay').textContent = fiveYearSurvival + '%';
+            document.getElementById('riskLevelDisplay').textContent = riskLevel;
+            document.getElementById('riskLevelDisplay').style.color = riskColor;
+            
+            // 更新风险指示器位置 (0-270分映射到0-100%)
+            const markerPosition = (totalScore / 270) * 100;
+            document.getElementById('riskMarker').style.left = markerPosition + '%';
+            
+            // 更新各因素图表
+            factorsChart.data.datasets[0].data = [ageScore, genderScore, metastasisScore, stageScore];
+            factorsChart.update();
+            
+            // 更新生存曲线
+            survivalChart.data.datasets[0].data = survivalData;
+            survivalChart.update();
+            
+            // 更新临床建议
+            document.getElementById('clinical-recommendations').innerHTML = recommendation;
+            document.getElementById('clinical-recommendations').className = 'clinical-recommendations ' + 
+                (riskLevel === "低风险" ? "low-risk" : 
+                 riskLevel === "中风险" ? "medium-risk" : "high-risk");
+            document.getElementById('clinical-recommendations').style.display = 'block';
+            
+            // 显示结果面板
+            document.getElementById('results').style.display = 'block';
+            document.getElementById('placeholder').style.display = 'none';
+        }
+        
+        // 页面加载时初始化图表
+        document.addEventListener('DOMContentLoaded', function() {
+            initCharts();
+        });
+    </script>
+</body>
+</html>
